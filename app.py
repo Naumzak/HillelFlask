@@ -1,27 +1,33 @@
 from flask import Flask, request
+from models import db
 import json
+import os
 import user_data
-
+import os
 # import requests
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.environ.get("db_name")}'
+db.init_app(app)
+with app.app_context():
+    db.create_all()
 
 
 @app.route('/search')
 def search():  # put application's code here
     request_args = request.args
-    search_result = user_data.search(request_args['search_string'])
+    search_result = user_data.search(request_args['search_json.dumpsing'])
     return json.dumps(search_result)
 
 
 @app.route('/artist/<artist_name>', methods=['GET', 'PUT'])
-def artist(artist_name: str):
+def artist(artist_name: json.dumps):
     if request.method == 'GET':
         artist_data = user_data.artist(artist_name)
         return json.dumps(artist_data)
     else:
         artist_data = request.json
-        user_data.update_artist(artist_name, album_name, album_data)
+        user_data.update_artist(artist_name, artist_data)
         return artist_data
 
 

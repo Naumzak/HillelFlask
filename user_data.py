@@ -1,59 +1,59 @@
-import os
-import sqlite3
 import add_song_info
-
-
-def db_request(query):
-    data_base = os.environ['db_name']
-    con = sqlite3.connect(data_base)
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    cur.execute(query)
-    con.commit()
-    result = [dict(i) for i in cur.fetchall()]
-    cur.close()
-    con.close()
-    return result
+from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
+import json
+from models import db
 
 
 def artist(artist_name):
-    query = f"""
-                SELECT DISTINCT al.album_name, album_year FROM album as al
-                JOIN info_about_song AS ias ON ias.album_id = al.album_id
-                JOIN artist as ar ON ar.artist_id = ias.artist_id
-                WHERE ar.artist_name = '{artist_name.title()}'"""
-    result = db_request(query)
-    return result
+    result = album_model.query.join(ias_model, album_model.album_id == ias_model.album_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
+        .add_columns(album_model.album_name, album_model.album_year, album_model.album_id) \
+        .filter(artist_model.artist_name == artist_name.title()).all()
+    info = [dict(itm) for itm in result]
+    return json.dumps(info)
 
 
 def album(artist_name, album_name):
-    query = f"""
-                        SELECT DISTINCT s.song_name, s.song_text, s.origin_lang, s.song_year  FROM song as s
-    JOIN info_about_song AS ias ON ias.song_id = s.song_id
-    JOIN album as al ON al.album_id = ias.album_id
-    JOIN artist as ar ON ar.artist_id = ias.artist_id
-    WHERE ar.artist_name = '{artist_name.title()}' and al.album_name = '{' '.join(album_name.split('_')).title()}' """
-    result = db_request(query)
-    return result
+    result = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
+        .join(album_model, album_model.album_id == ias_model.album_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
+        .add_columns(song_model.song_id, song_model.song_name, song_model.song_text, song_model.origin_lang,
+                     song_model.song_year) \
+        .filter(artist_model.artist_name == artist_name.title()) \
+        .filter(album_model.album_name == album_name.title()).all()
+    info = [dict(itm) for itm in result]
+    return json.dumps(info)
 
 
 def song(artist_name, song_name):
-    query = f"""
-                                SELECT DISTINCT s.song_name, s.song_text, s.origin_lang, s.song_year  FROM song as s
-            JOIN info_about_song AS ias ON ias.song_id = s.song_id
-            JOIN album as al ON al.album_id = ias.album_id
-            JOIN artist as ar ON ar.artist_id = ias.artist_id
-            WHERE ar.artist_name = '{artist_name.title()}' and s.song_name = '{' '.join(song_name.split('_')).title()}' """
-    result = db_request(query)
-    return result
+    result = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
+        .join(album_model, album_model.album_id == ias_model.album_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
+        .add_columns(song_model.song_id, song_model.song_name, song_model.song_text, song_model.origin_lang,
+                     song_model.song_year) \
+        .filter(artist_model.artist_name == artist_name.title()) \
+        .filter(song_model.song_name == song_name.title()).all()
+
+    info = [dict(itm) for itm in result]
+    return json.dumps(info)
 
 
 def search(search_word):
-    result = {'song': db_request(f""" SELECT song_name FROM song WHERE song_name like '%{search_word}%' """),
-              'album': db_request(f""" SELECT album_name FROM album WHERE album_name like '%{search_word}%'"""),
-              'artist': db_request(f""" SELECT artist_name FROM artist WHERE artist_name like '%{search_word}%'""")
+    result_song = song_model.query.add_columns \
+        (song_model.song_id, song_model.song_name, song_model.song_text, song_model.origin_lang, song_model.song_year) \
+        .filter(song_model.song_name.like(f'%{search_word}%')).all()
+    result_album = album_model.query \
+        .add_columns(song_model.song_id, song_model.song_name, song_model.song_text, song_model.origin_lang,
+                     song_model.song_year) \
+        .filter(album_model.album_name.like(f'%{search_word}%')).all()
+    result_artist = artist_model.query \
+        .add_columns(album_model.album_name, album_model.album_year, album_model.album_id) \
+        .filter(artist_model.artist_name.like(f'%{search_word}%')).all()
+    result = {'song': [dict(itm) for itm in result_song],
+              'album': [dict(itm) for itm in result_album],
+              'artist': [dict(itm) for itm in result_artist]
               }
-    return result
+    return json.dumps(result)
 
 
 ###################################      ДОБАВЛЕНИЕ    ###############################################
@@ -84,58 +84,48 @@ def add_song(song_data):
 
 
 def delete_song(artist_name, song_name):
-    query = f"""
-                                SELECT DISTINCT s.song_id FROM song as s
-            JOIN info_about_song AS ias ON ias.song_id = s.song_id
-            JOIN album as al ON al.album_id = ias.album_id
-            JOIN artist as ar ON ar.artist_id = ias.artist_id
-            WHERE ar.artist_name = '{artist_name.title()}' and s.song_name = '{' '.join(song_name.split('_')).title()}' """
-
-    song_id = db_request(query)[0]['song_id']
-    query = f"""DELETE FROM song WHERE song_id={song_id};"""
-    db_request(query)
-    query = f"""DELETE FROM info_about_song WHERE song_id={song_id};"""
-    db_request(query)
+    song_query = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id).add_columns(song_model.song_id) \
+        .filter(artist_model.artist_name == artist_name.title()).filter(
+        song_model.song_name == song_name.title()).first()
+    song_id = song_query.song_id
+    song_obj = song_model.query.get(song_id)
+    db.session.delete(song_obj)
+    db.session.commit()
 
 
 ###################################      ОБНОВЛЕНИЕ    ###############################################
 
 def update_song(artist_name, song_name, song_data):
-    query = f"""
-                                    SELECT DISTINCT s.song_id FROM song as s
-                JOIN info_about_song AS ias ON ias.song_id = s.song_id
-                JOIN album as al ON al.album_id = ias.album_id
-                JOIN artist as ar ON ar.artist_id = ias.artist_id
-                WHERE ar.artist_name = '{artist_name.title()}' and s.song_name = '{' '.join(song_name.split('_')).title()}' """
-
-    song_id = db_request(query)[0]['song_id']
-    query = f"""UPDATE song
-    SET song_name = '{song_data['song_name']}', song_text ='{song_data['song_text']}', song_year = '{song_data['song_year']}', origin_lang = '{song_data['origin_lang']}'
-    WHERE song_id = {song_id}"""
-    db_request(query)
+    song_query = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id).add_columns(song_model.song_id) \
+        .filter(artist_model.artist_name == artist_name.title()).filter(
+        song_model.song_name == song_name.title()).first()
+    song_id = song_query.song_id
+    current_song = song_model.query.get(song_id)
+    current_song.song_name = song_data['song_name']
+    current_song.song_text = song_data['song_text']
+    current_song.song_year = song_data['song_year']
+    current_song.origin_lang = song_data['origin_lang']
+    db.session.commit()
 
 
 def update_album(artist_name, album_name, album_data):
-    query = f"""
-                        SELECT DISTINCT al.album_id  FROM song as s
-    JOIN info_about_song AS ias ON ias.song_id = s.song_id
-    JOIN album as al ON al.album_id = ias.album_id
-    JOIN artist as ar ON ar.artist_id = ias.artist_id
-    WHERE ar.artist_name = '{artist_name.title()}' and al.album_name = '{' '.join(album_name.split('_')).title()}' """
-
-    album_id = db_request(query)[0]['album_id']
-    query = f"""UPDATE album
-    SET album_name = '{album_data['album_name']}', album_year ='{album_data['album_year']}', album_info = '{album_data['album_info']}'
-    WHERE album_id = {album_id}"""
-    db_request(query)
+    album_query = album_model.query.join(ias_model, ias_model.album_id == album_model.album_id) \
+        .join(artist_model, artist_model.artist_id == ias_model.artist_id).add_columns(album_model.album_id) \
+        .filter(artist_model.artist_name == artist_name.title()).filter(
+        album_model.album_name == album_name.title()).first()
+    album_id = album_query.song_id
+    current_album = album_model.query.get(album_id)
+    current_album.album_name = album_data['album_name']
+    current_album.album_year = album_data['album_year']
+    current_album.album_info = album_data['album_info']
 
 
 def update_artist(artist_name, artist_data):
-    query = f"""SELECT DISTINCT artist_id FROM artist
-    WHERE artist_name = '{artist_name.title()}' """
-
-    artist_id = db_request(query)[0]['artist_id']
-    query = f"""UPDATE artist
-    SET artist_name = '{artist_data['artist_name']}', artist_info ='{artist_data['artist_info']}'
-    WHERE artist_id = {artist_id}"""
-    db_request(query)
+    artist_query = artist_model.query.add_columns(artist_model.artist_id) \
+        .filter(artist_model.artist_name == artist_name.title())
+    current_artist = artist_model.query.get(artist_query.artist_id)
+    current_artist.artist_name = artist_data['artist_name']
+    current_artist.artist_info = artist_data['artist_info']
+    db.session.commit()
