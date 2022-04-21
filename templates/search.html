@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search</title>
+</head>
+<body>
+<h1>Artists</h1>
+ <ul>
+        {% for one_artist in artists %}
+            <li><a href="/artist/{{ one_artist['artist_name'] }}">{{ one_artist['artist_name'] }}</a></li>
+        {% endfor %}
+ </ul>
+<hr/>
+<h1>Album</h1>
+<ul>
+        {% for one_album in albums %}
+            <li><a href="/artist/{{ one_album['artist_name'] }}/album/{{ one_album['album_name'] }}">{{ one_album['album_name'] }}</a></li>
+        {% endfor %}
+ </ul>
+<h1>Song</h1>
+ <ul>
+        {% for one_song in info %}
+            <li><a href="/artist/{{ one_song['artist_name'] }}/song/{{ one_song['song_name'] }}">{{ one_song['song_name'] }}</a></li>
+        {% endfor %}
+ </ul>
+</body>
+</html>

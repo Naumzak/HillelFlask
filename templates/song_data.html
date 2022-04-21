@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ artist_name }} - {{ song_name }}</title>
+</head>
+<body>
+<h1>{{ artist_name.title() }}</h1>
+<h2>{{ song_name.title() }}</h2>
+<hr/>
+<p>{{ info[0]['song_text'] }}</p>
+<p>{{ info[0]['song_year'] }}</p>
+<a href="/artist/{{ artist_name }}/album/{{ album_name }}">Album</a>
+<br/>
+<a href="/artist/{{ artist_name }}">Artist</a>
+</body>
+</html>

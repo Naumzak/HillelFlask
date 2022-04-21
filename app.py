@@ -1,13 +1,12 @@
-from flask import Flask, request
-from models import db
+from flask import Flask, request, render_template
 import json
-import os
 import user_data
 import os
-# import requests
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.environ.get("db_name")}'
+db = SQLAlchemy()
 db.init_app(app)
 with app.app_context():
     db.create_all()
@@ -17,14 +16,14 @@ with app.app_context():
 def search():  # put application's code here
     request_args = request.args
     search_result = user_data.search(request_args['search_json.dumpsing'])
-    return json.dumps(search_result)
+    return render_template('search.html', **search_result)
 
 
 @app.route('/artist/<artist_name>', methods=['GET', 'PUT'])
 def artist(artist_name: json.dumps):
     if request.method == 'GET':
         artist_data = user_data.artist(artist_name)
-        return json.dumps(artist_data)
+        return render_template('artist_data.html', **artist_data)
     else:
         artist_data = request.json
         user_data.update_artist(artist_name, artist_data)
@@ -35,7 +34,7 @@ def artist(artist_name: json.dumps):
 def album(artist_name, album_name):
     if request.method == 'GET':
         album_data = user_data.album(artist_name, album_name)
-        return json.dumps(album_data)
+        return render_template('album_data.html', **album_data)
     else:
         album_data = request.json
         user_data.update_album(artist_name, album_name, album_data)
@@ -46,7 +45,7 @@ def album(artist_name, album_name):
 def song(artist_name, song_name):
     if request.method == 'GET':
         song_data = user_data.song(artist_name, song_name)
-        return json.dumps(song_data)
+        return render_template('song_data.html', **song_data)
     elif request.method == 'DELETE':
         user_data.delete_song(artist_name, song_name)
         return f"Delete {song_name}"
