@@ -1,11 +1,9 @@
-import add_song_info
-from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
-import json
-from models import db
+
 import serializers
 
 
 def artist(artist_name):
+    from models import artist as artist_model, album as album_model, info_about_song as ias_model
     result = album_model.query.join(ias_model, album_model.album_id == ias_model.album_id) \
         .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
         .add_columns(album_model.album_name, album_model.album_year, album_model.album_id) \
@@ -15,6 +13,7 @@ def artist(artist_name):
 
 
 def album(artist_name, album_name):
+    from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
     result = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
         .join(album_model, album_model.album_id == ias_model.album_id) \
         .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
@@ -27,6 +26,7 @@ def album(artist_name, album_name):
 
 
 def song(artist_name, song_name):
+    from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
     result = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
         .join(album_model, album_model.album_id == ias_model.album_id) \
         .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
@@ -40,6 +40,7 @@ def song(artist_name, song_name):
 
 
 def search(search_word):
+    from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
     result_song = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
         .join(artist_model, artist_model.artist_id == ias_model.artist_id) \
         .add_columns(artist_model.artist_name, song_model.song_name)\
@@ -62,6 +63,7 @@ def search(search_word):
 ###################################      ДОБАВЛЕНИЕ    ###############################################
 
 def add_song(song_data):
+    import add_song_info
     info_about_song = {'artist_id': 0, 'song_id': 0, 'album_id': 0}
     song_errors = serializers.SongAddSchema().validate(song_data['song_information'])  # Проверка валидации данных
     if song_errors:
@@ -99,19 +101,20 @@ def add_song(song_data):
 
 
 def delete_song(artist_name, song_name):
+    from models import artist as artist_model, song as song_model, album as album_model, info_about_song as ias_model
     song_query = song_model.query.join(ias_model, ias_model.song_id == song_model.song_id) \
         .join(artist_model, artist_model.artist_id == ias_model.artist_id).add_columns(song_model.song_id) \
         .filter(artist_model.artist_name == artist_name.title()).filter(
         song_model.song_name == song_name.title()).first()
     song_id = song_query.song_id
     song_obj = song_model.query.get(song_id)
-    db.session.delete(song_obj)
-    db.session.commit()
+    return song_obj
 
 
 ###################################      ОБНОВЛЕНИЕ    ###############################################
 
 def update_song(artist_name, song_name, song_data):
+    from models import artist as artist_model, song as song_model, info_about_song as ias_model
     errors = serializers.SongUpdateSchema().validate(song_data)
     if errors:
         return errors
@@ -125,10 +128,10 @@ def update_song(artist_name, song_name, song_data):
     current_song.song_text = song_data['song_text']
     current_song.song_year = song_data['song_year']
     current_song.origin_lang = song_data['origin_lang']
-    db.session.commit()
 
 
 def update_album(artist_name, album_name, album_data):
+    from models import artist as artist_model, album as album_model, info_about_song as ias_model
     errors = serializers.AlbumUpdateSchema().validate(album_data)
     if errors:
         return errors
@@ -144,6 +147,7 @@ def update_album(artist_name, album_name, album_data):
 
 
 def update_artist(artist_name, artist_data):
+    from models import artist as artist_model
     errors = serializers.ArtistSchema().validate(artist_data)
     if errors:
         return errors
@@ -152,4 +156,3 @@ def update_artist(artist_name, artist_data):
     current_artist = artist_model.query.get(artist_query.artist_id)
     current_artist.artist_name = artist_data['artist_name']
     current_artist.artist_info = artist_data['artist_info']
-    db.session.commit()

@@ -1,15 +1,20 @@
 from flask import Flask, request, render_template
+from flask_sqlalchemy import SQLAlchemy
 import json
 import user_data
 import os
-from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.environ.get("db_name")}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.environ.get("app.db_name")}'
 db = SQLAlchemy()
 db.init_app(app)
 with app.app_context():
     db.create_all()
+
+
+@app.route('/')
+def index():
+    return "Hello World"
 
 
 @app.route('/search')
@@ -27,6 +32,7 @@ def artist(artist_name: json.dumps):
     else:
         artist_data = request.json
         user_data.update_artist(artist_name, artist_data)
+        db.session.commit()
         return artist_data
 
 
@@ -38,6 +44,7 @@ def album(artist_name, album_name):
     else:
         album_data = request.json
         user_data.update_album(artist_name, album_name, album_data)
+        db.session.commit()
         return album_data
 
 
@@ -47,11 +54,14 @@ def song(artist_name, song_name):
         song_data = user_data.song(artist_name, song_name)
         return render_template('song_data.html', **song_data)
     elif request.method == 'DELETE':
-        user_data.delete_song(artist_name, song_name)
+        song_obj = user_data.delete_song(artist_name, song_name)
+        db.session.delete(song_obj)
+        db.session.commit()
         return f"Delete {song_name}"
     elif request.method == 'PUT':
         song_data = request.json
         user_data.update_song(artist_name, song_name, song_data)
+        db.session.commit()
         return song_data
 
 
@@ -66,5 +76,4 @@ def add_song():
 
 
 if __name__ == '__main__':
-    print('sss')
     app.run()
